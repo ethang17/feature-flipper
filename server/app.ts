@@ -1,10 +1,12 @@
 import express, { type Express, type Request, type Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ToggleFile, AppToggles } from '../shared/toggles.interface.ts';
+import { ToggleFile, AppToggle, AppToggleSchema } from '../shared/toggles.interface.ts';
+import bodyParser from 'body-parser';
+import * as z from 'zod';
 
 const app: Express = express();
-
+app.use(bodyParser.json());
 
 app.get('/', (req: Request, res: Response) => {
 	const jsonData = readFromFile();
@@ -14,11 +16,12 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 app.post('/add-app', (req:Request, res:Response) => {
-	let newApp: AppToggles;
+	let newApp: AppToggle;
 	let currData, updatedData: ToggleFile;
 	try{
-		newApp = req.body;
+		newApp = z.parse(AppToggleSchema, req.body);
 	} catch(e){
+		console.log(e);
 		res.send("Incorrect app shape").status(404);
 		return;
 	}
@@ -27,8 +30,14 @@ app.post('/add-app', (req:Request, res:Response) => {
 		res.send("Could not read file").status(500);
 		return; //not needed, just for type scoping below
 	}
-	updatedData = currData;
-	updatedData.apps.push(newApp);
+	const existingApps = currData.apps ? currData.apps : [];
+
+	updatedData = {
+		...currData,
+		apps: [ newApp, ...existingApps ]
+	};
+	console.log(newApp);
+	
 	if(writeToFile(updatedData)){
 		res.send("App successfully added").status(201);
 	}else{
@@ -42,7 +51,6 @@ function readFromFile():ToggleFile|null {
 		const data = fs.readFileSync(filePath, 'utf8');
 		const jsonData:ToggleFile = JSON.parse(data);
 		console.log("Retrieved Data from File:");
-		console.log(jsonData)
 		return jsonData;
 	} catch(e) {
 		console.log("Error getting data from file: \n" + e);

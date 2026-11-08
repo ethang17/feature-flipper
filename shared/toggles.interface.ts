@@ -1,32 +1,26 @@
 import {ENV} from './env.interface.ts';
+import z from 'zod';
 
-export interface ToggleFile {
-    apps: AppToggles[];
-}
 
-export interface AppToggles {
-    name: string;
-    features: FeatureToggle[];
-}
+const ToggleEnvironmentSchema = z.object({
+    envName: z.enum(ENV),
+    value: z.boolean()
+})
 
-interface FeatureToggle {
-    name: string;
-    id: string;
-    envs: [
-        LocalEnv,
-        ProdEnv
-    ];
-}
+const FeatureToggleSchema = z.object({
+    name: z.string(),
+    id: z.string(),
+    envs: z.array(ToggleEnvironmentSchema)
+})
 
-interface Environment{
-    envName: ENV;
-    value: boolean;
-}
+export const AppToggleSchema = z.object({
+    name: z.string(),
+    features: z.array(FeatureToggleSchema)
+});
 
-interface LocalEnv extends Environment {
-    envName: ENV.local;
-}
+export const ToggleFileSchema = z.object({
+    apps: z.array(AppToggleSchema)
+});
 
-interface ProdEnv extends Environment {
-    envName: ENV.prod;
-}
+export type ToggleFile = z.infer<typeof ToggleFileSchema>;
+export type AppToggle = z.infer<typeof AppToggleSchema>;
